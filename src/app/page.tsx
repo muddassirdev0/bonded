@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Zap, Shield, MessageCircle, Users, Lock, Sparkles } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-const fadeUp = {
+const fadeUp: any = {
   hidden: { opacity: 0, y: 30 },
   visible: (i: number) => ({
     opacity: 1, y: 0,
@@ -12,7 +12,7 @@ const fadeUp = {
   })
 };
 
-const scaleIn = {
+const scaleIn: any = {
   hidden: { opacity: 0, scale: 0.8 },
   visible: (i: number) => ({
     opacity: 1, scale: 1,
@@ -39,7 +39,7 @@ export default function LandingPage() {
           y: [0, -40, 20, 0],
           scale: [1, 1.15, 0.95, 1]
         }}
-        transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
+        transition={{ duration: 12, repeat: Infinity, ease: "linear" }}
       />
       <motion.div
         className="blob blob-pink"
@@ -49,7 +49,7 @@ export default function LandingPage() {
           y: [0, 30, -20, 0],
           scale: [1, 0.9, 1.1, 1]
         }}
-        transition={{ duration: 14, repeat: Infinity, ease: "easeInOut", delay: 2 }}
+        transition={{ duration: 14, repeat: Infinity, ease: "linear", delay: 2 }}
       />
       <motion.div
         className="blob blob-cyan"
@@ -58,7 +58,7 @@ export default function LandingPage() {
           x: [0, 20, -30, 0],
           y: [0, -30, 15, 0],
         }}
-        transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 4 }}
+        transition={{ duration: 10, repeat: Infinity, ease: "linear", delay: 4 }}
       />
 
       <div style={{ position: 'relative', zIndex: 1, minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 24px 40px' }}>
@@ -86,7 +86,7 @@ export default function LandingPage() {
                 '0 12px 40px rgba(139, 92, 246, 0.35)',
               ]
             }}
-            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+            transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
           >
             <Zap size={34} color="white" fill="white" />
           </motion.div>

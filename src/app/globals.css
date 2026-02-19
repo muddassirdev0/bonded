@@ -752,3 +752,82 @@ a {
         transform: rotate(360deg);
     }
 }
+
+/* ========== MESSAGE BUBBLES (Snapchat Style) ========== */
+.message-row {
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    padding: 3px 16px;
+    margin-bottom: 2px;
+}
+
+.message-row-sent {
+    justify-content: flex-end;
+    padding-left: 60px;
+}
+
+.message-row-received {
+    justify-content: flex-start;
+    padding-right: 60px;
+}
+
+.message-bubble {
+    padding: 10px 14px;
+    font-size: 14px;
+    line-height: 1.45;
+    word-break: break-word;
+    white-space: pre-wrap;
+    max-width: 100%;
+    min-width: 0;
+    color: white;
+}
+
+.message-sent {
+    background: linear-gradient(135deg, #8B5CF6 0%, #7C3AED 100%);
+    border-radius: 20px 20px 6px 20px;
+    box-shadow: 0 2px 8px rgba(139, 92, 246, 0.2);
+}
+
+.message-received {
+    background: rgba(255, 255, 255, 0.07);
+    border-radius: 20px 20px 20px 6px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.message-time {
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 3px;
+    opacity: 0.6;
+}
+
+.message-time-sent {
+    text-align: right;
+    padding-right: 4px;
+}
+
+.message-time-received {
+    text-align: left;
+    padding-left: 4px;
+}
+
+/* Hide scrollbar utility */
+.no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+    display: none;
+}
+
+/* Audio player styling */
+audio {
+    filter: invert(1);
+    opacity: 0.8;
+}
+
+audio::-webkit-media-controls-panel {
+    background: transparent;
+}

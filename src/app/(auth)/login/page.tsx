@@ -6,13 +6,13 @@ import { auth } from '@/lib/firebase';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { LogIn, Eye, EyeOff, Zap, User, Lock } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, Variants } from 'framer-motion';
 
-const fadeUp = {
+const fadeUp: any = {
     hidden: { opacity: 0, y: 25 },
     visible: (i: number) => ({
         opacity: 1, y: 0,
-        transition: { delay: i * 0.1, duration: 0.5, ease: "easeOut" as const }
+        transition: { delay: i * 0.1, duration: 0.5, ease: "easeOut" }
     })
 };
 
@@ -46,13 +46,13 @@ export default function LoginPage() {
                 className="blob blob-purple"
                 style={{ width: 250, height: 250, top: '10%', right: '-10%' }}
                 animate={{ x: [0, 20, -10, 0], y: [0, -30, 15, 0] }}
-                transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }}
+                transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
             />
             <motion.div
                 className="blob blob-pink"
                 style={{ width: 200, height: 200, bottom: '20%', left: '-5%' }}
                 animate={{ x: [0, -15, 20, 0], y: [0, 20, -15, 0] }}
-                transition={{ duration: 12, repeat: Infinity, ease: "easeInOut", delay: 3 }}
+                transition={{ duration: 12, repeat: Infinity, ease: "linear", delay: 3 }}
             />
 
             <div style={{ position: 'relative', zIndex: 1, minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 24px' }}>

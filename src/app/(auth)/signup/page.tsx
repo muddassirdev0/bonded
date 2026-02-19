@@ -9,11 +9,11 @@ import { useRouter } from 'next/navigation';
 import { UserPlus, Eye, EyeOff, Zap, Lock, User, AtSign } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-const fadeUp = {
+const fadeUp: any = {
     hidden: { opacity: 0, y: 25 },
     visible: (i: number) => ({
         opacity: 1, y: 0,
-        transition: { delay: i * 0.1, duration: 0.5, ease: "easeOut" as const }
+        transition: { delay: i * 0.1, duration: 0.5, ease: "easeOut" }
     })
 };
 
@@ -91,13 +91,13 @@ export default function SignupPage() {
                 className="blob blob-cyan"
                 style={{ width: 250, height: 250, top: '5%', left: '-10%' }}
                 animate={{ x: [0, 25, -15, 0], y: [0, -20, 25, 0] }}
-                transition={{ duration: 11, repeat: Infinity, ease: "easeInOut" }}
+                transition={{ duration: 11, repeat: Infinity, ease: "linear" }}
             />
             <motion.div
                 className="blob blob-purple"
                 style={{ width: 200, height: 200, bottom: '15%', right: '-5%' }}
                 animate={{ x: [0, -20, 15, 0], y: [0, 15, -20, 0] }}
-                transition={{ duration: 13, repeat: Infinity, ease: "easeInOut", delay: 3 }}
+                transition={{ duration: 13, repeat: Infinity, ease: "linear", delay: 3 }}
             />
 
             <div style={{ position: 'relative', zIndex: 1, minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 24px' }}>

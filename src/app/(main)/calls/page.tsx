@@ -1,39 +1,109 @@
 "use client";
 
-import { Phone, Video, PhoneMissed, PhoneIncoming, PhoneOutgoing, UserPlus } from 'lucide-react';
+import { Phone, Video, PhoneMissed, PhoneIncoming, PhoneOutgoing } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useAuth } from '@/lib/hooks/useAuth';
+import { supabase } from '@/lib/supabase';
+import { useEffect, useState } from 'react';
 
-const listItem = {
-    hidden: { opacity: 0, x: -20 },
-    visible: (i: number) => ({
-        opacity: 1, x: 0,
-        transition: { delay: i * 0.05, duration: 0.3 }
-    })
-};
+interface CallLog {
+    id: string;
+    caller_id: string;
+    receiver_id: string;
+    status: 'missed' | 'completed' | 'rejected';
+    duration: number;
+    started_at: string;
+    ended_at: string | null;
+    other_profile?: {
+        display_name: string;
+        username: string;
+        avatar_url: string;
+    };
+}
 
 export default function CallsPage() {
-    const calls: any[] = [];
+    const { user } = useAuth();
+    const [calls, setCalls] = useState<CallLog[]>([]);
+    const [loading, setLoading] = useState(true);
 
-    const getStatusIcon = (status: string) => {
-        switch (status) {
-            case 'missed': return <PhoneMissed size={14} style={{ color: 'var(--accent-red)' }} />;
-            case 'incoming': return <PhoneIncoming size={14} style={{ color: 'var(--text-secondary)' }} />;
-            case 'outgoing': return <PhoneOutgoing size={14} style={{ color: 'var(--accent-green)' }} />;
-            default: return null;
-        }
+    useEffect(() => {
+        if (!user) return;
+
+        const fetchCalls = async () => {
+            const { data } = await supabase
+                .from('call_logs')
+                .select('*')
+                .or(`caller_id.eq.${user.uid},receiver_id.eq.${user.uid}`)
+                .order('started_at', { ascending: false })
+                .limit(50);
+
+            if (data && data.length > 0) {
+                const otherIds = data.map(c => c.caller_id === user.uid ? c.receiver_id : c.caller_id);
+                const uniqueIds = [...new Set(otherIds)];
+
+                const { data: profiles } = await supabase
+                    .from('profiles')
+                    .select('id, display_name, username, avatar_url')
+                    .in('id', uniqueIds);
+
+                const enriched = data.map(call => {
+                    const otherId = call.caller_id === user.uid ? call.receiver_id : call.caller_id;
+                    const profile = profiles?.find(p => p.id === otherId);
+                    return {
+                        ...call,
+                        other_profile: profile || undefined
+                    };
+                });
+
+                setCalls(enriched);
+            }
+            setLoading(false);
+        };
+
+        fetchCalls();
+    }, [user]);
+
+    const getStatusIcon = (call: CallLog) => {
+        if (call.status === 'missed') return <PhoneMissed size={14} style={{ color: 'var(--accent-red)' }} />;
+        if (call.caller_id === user?.uid) return <PhoneOutgoing size={14} style={{ color: 'var(--accent-green)' }} />;
+        return <PhoneIncoming size={14} style={{ color: 'var(--text-secondary)' }} />;
     };
 
-    const getStatusColor = (status: string) => {
-        switch (status) {
-            case 'missed': return 'var(--accent-red)';
-            case 'incoming': return 'var(--text-secondary)';
-            case 'outgoing': return 'var(--accent-green)';
-            default: return 'var(--text-muted)';
-        }
+    const getStatusText = (call: CallLog) => {
+        if (call.status === 'missed') return 'Missed';
+        if (call.status === 'rejected') return 'Declined';
+        if (call.caller_id === user?.uid) return 'Outgoing';
+        return 'Incoming';
+    };
+
+    const getStatusColor = (call: CallLog) => {
+        if (call.status === 'missed') return 'var(--accent-red)';
+        if (call.status === 'rejected') return 'var(--accent-yellow)';
+        return 'var(--text-secondary)';
+    };
+
+    const formatTime = (dateStr: string) => {
+        const d = new Date(dateStr);
+        const now = new Date();
+        const diff = now.getTime() - d.getTime();
+        const mins = Math.floor(diff / 60000);
+        if (mins < 60) return `${mins}m ago`;
+        const hours = Math.floor(mins / 60);
+        if (hours < 24) return `${hours}h ago`;
+        const days = Math.floor(hours / 24);
+        if (days < 7) return `${days}d ago`;
+        return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    };
+
+    const formatDuration = (seconds: number) => {
+        if (!seconds) return '';
+        const m = Math.floor(seconds / 60);
+        const s = seconds % 60;
+        return ` · ${m}:${s.toString().padStart(2, '0')}`;
     };
 
     return (
-        <div>
+        <div style={{ paddingBottom: 80 }}>
             {/* Header */}
             <motion.div
                 className="app-header"
@@ -42,76 +112,69 @@ export default function CallsPage() {
                 transition={{ duration: 0.4 }}
             >
                 <h1 className="app-header-title" style={{ flex: 1 }}>Calls</h1>
-                <motion.button
-                    className="btn-icon"
-                    style={{ background: 'rgba(236, 72, 153, 0.15)', color: 'var(--accent-pink)' }}
-                    whileHover={{ scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                >
-                    <UserPlus size={18} />
-                </motion.button>
             </motion.div>
 
             {/* Call List */}
-            <div style={{ paddingBottom: 80 }}>
-                {calls.length === 0 ? (
-                    <div style={{ padding: 40, textAlign: 'center', opacity: 0.5 }}>
-                        <p>No recent calls</p>
-                    </div>
-                ) : (
-                    calls.map((call, i) => (
-                        <motion.div
-                            key={call.id}
-                            className="chat-item"
-                            variants={listItem}
-                            initial="hidden"
-                            animate="visible"
-                            custom={i}
-                            whileHover={{ x: 4, backgroundColor: 'rgba(255,255,255,0.03)' }}
+            {loading ? (
+                <div style={{ display: 'flex', justifyContent: 'center', padding: 40 }}>
+                    <motion.div className="spinner" initial={{ opacity: 0 }} animate={{ opacity: 1 }} />
+                </div>
+            ) : calls.length === 0 ? (
+                <div style={{ padding: 40, textAlign: 'center' }}>
+                    <Phone size={36} style={{ color: 'var(--text-muted)', marginBottom: 10, opacity: 0.5 }} />
+                    <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 4 }}>
+                        No recent calls
+                    </p>
+                    <p style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                        Call a friend from their chat
+                    </p>
+                </div>
+            ) : (
+                calls.map((call, i) => (
+                    <motion.div
+                        key={call.id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: i * 0.05 }}
+                        style={{
+                            display: 'flex', alignItems: 'center', gap: 12,
+                            padding: '12px 16px',
+                            borderBottom: '1px solid rgba(255,255,255,0.03)'
+                        }}
+                    >
+                        <img
+                            src={call.other_profile?.avatar_url || `https://api.dicebear.com/7.x/micah/svg?seed=${call.other_profile?.username || 'user'}`}
+                            style={{ width: 44, height: 44, borderRadius: '50%', flexShrink: 0 }}
+                        />
+
+                        <div style={{ flex: 1 }}>
+                            <div style={{
+                                fontWeight: 600, fontSize: 14,
+                                color: call.status === 'missed' ? 'var(--accent-red)' : 'white'
+                            }}>
+                                {call.other_profile?.display_name || 'Unknown'}
+                            </div>
+                            <div style={{ fontSize: 12, color: getStatusColor(call), display: 'flex', alignItems: 'center', gap: 4, fontWeight: 500 }}>
+                                {getStatusIcon(call)}
+                                <span>{getStatusText(call)}{formatDuration(call.duration)} · {formatTime(call.started_at)}</span>
+                            </div>
+                        </div>
+
+                        <motion.button
+                            className="btn-icon"
+                            style={{
+                                background: 'rgba(139, 92, 246, 0.08)',
+                                color: 'var(--accent-purple)',
+                                width: 36, height: 36
+                            }}
+                            whileHover={{ scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
                         >
-                            <div className="avatar-wrapper">
-                                <img src={call.avatar} className="avatar avatar-lg avatar-ring avatar-ring-pink" />
-                            </div>
-
-                            <div className="chat-item-info">
-                                <div className="chat-item-name" style={{ color: call.status === 'missed' ? 'var(--accent-red)' : 'var(--text-primary)' }}>
-                                    {call.name}
-                                </div>
-                                <div className="chat-item-status">
-                                    {getStatusIcon(call.status)}
-                                    <span style={{ color: getStatusColor(call.status), fontWeight: 500 }}>
-                                        {call.status.charAt(0).toUpperCase() + call.status.slice(1)} · {call.time}
-                                    </span>
-                                </div>
-                            </div>
-
-                            <motion.button
-                                className="btn-icon"
-                                style={{
-                                    background: call.type === 'video' ? 'rgba(139, 92, 246, 0.12)' : 'rgba(6, 182, 212, 0.12)',
-                                    color: call.type === 'video' ? 'var(--accent-purple)' : 'var(--accent-cyan)'
-                                }}
-                                whileHover={{ scale: 1.15 }}
-                                whileTap={{ scale: 0.9 }}
-                            >
-                                {call.type === 'video' ? <Video size={18} /> : <Phone size={18} />}
-                            </motion.button>
-                        </motion.div>
-                    )))}
-            </div>
-
-            {/* FAB */}
-            <motion.button
-                className="fab"
-                style={{ background: 'linear-gradient(135deg, var(--accent-pink), var(--accent-purple))' }}
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ delay: 0.4, type: "spring", stiffness: 300, damping: 20 }}
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-            >
-                <Phone size={22} color="white" />
-            </motion.button>
+                            {call.duration > 0 ? <Video size={16} /> : <Phone size={16} />}
+                        </motion.button>
+                    </motion.div>
+                ))
+            )}
         </div>
     );
 }
