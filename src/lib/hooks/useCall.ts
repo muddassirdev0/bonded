@@ -38,6 +38,12 @@ export function useCall(userId: string, remoteUserId: string) {
     const channelRef = useRef<any>(null);
     const durationTimerRef = useRef<NodeJS.Timeout | null>(null);
     const callIdRef = useRef<string | null>(null);
+    const statusRef = useRef(callState.status);
+
+    // Keep status ref up to date
+    useEffect(() => {
+        statusRef.current = callState.status;
+    }, [callState.status]);
 
     useEffect(() => {
         return () => {
@@ -51,10 +57,6 @@ export function useCall(userId: string, remoteUserId: string) {
         if (peerConnection.current) {
             peerConnection.current.close();
             peerConnection.current = null;
-        }
-        if (channelRef.current) {
-            supabase.removeChannel(channelRef.current);
-            channelRef.current = null;
         }
         if (durationTimerRef.current) {
             clearInterval(durationTimerRef.current);
@@ -76,6 +78,11 @@ export function useCall(userId: string, remoteUserId: string) {
                 remoteStream: event.streams[0],
                 status: 'connected'
             }));
+
+            // Update call log to connected
+            if (callIdRef.current) {
+                supabase.from('call_logs').update({ status: 'completed' }).eq('id', callIdRef.current);
+            }
 
             durationTimerRef.current = setInterval(() => {
                 setCallState(prev => ({ ...prev, duration: prev.duration + 1 }));
@@ -104,11 +111,22 @@ export function useCall(userId: string, remoteUserId: string) {
         return pc;
     }, [userId]);
 
+    const getChannel = useCallback(() => {
+        const channelName = `call-${[userId, remoteUserId].sort().join('-')}`;
+        if (channelRef.current) {
+            supabase.removeChannel(channelRef.current);
+        }
+        const channel = supabase.channel(channelName, {
+            config: { broadcast: { self: false } }
+        });
+        channelRef.current = channel;
+        return channel;
+    }, [userId, remoteUserId]);
+
     const startCall = useCallback(async (withVideo: boolean = false) => {
         try {
-            // Check if mediaDevices API is available
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                setCallState(prev => ({ ...prev, error: 'Your browser does not support calling. Please use HTTPS or localhost.' }));
+                setCallState(prev => ({ ...prev, error: 'Your browser does not support calling. Use HTTPS or localhost.' }));
                 return;
             }
 
@@ -129,10 +147,7 @@ export function useCall(userId: string, remoteUserId: string) {
             }));
 
             const pc = setupPeerConnection(stream);
-
-            const channelName = `call-${[userId, remoteUserId].sort().join('-')}`;
-            const channel = supabase.channel(channelName);
-            channelRef.current = channel;
+            const channel = getChannel();
 
             channel
                 .on('broadcast', { event: 'answer' }, async ({ payload }) => {
@@ -165,6 +180,7 @@ export function useCall(userId: string, remoteUserId: string) {
                             const offer = await pc.createOffer();
                             await pc.setLocalDescription(offer);
 
+                            // Send offer on the channel
                             channel.send({
                                 type: 'broadcast',
                                 event: 'offer',
@@ -180,33 +196,22 @@ export function useCall(userId: string, remoteUserId: string) {
                     }
                 });
 
-            // Log call start (don't block on this)
+            // Log call
             supabase
                 .from('call_logs')
-                .insert({
-                    caller_id: userId,
-                    receiver_id: remoteUserId,
-                    status: 'missed'
-                })
-                .select()
-                .single()
-                .then(({ data }) => {
-                    if (data) callIdRef.current = data.id;
-                });
+                .insert({ caller_id: userId, receiver_id: remoteUserId, status: 'missed' })
+                .select().single()
+                .then(({ data }) => { if (data) callIdRef.current = data.id; });
 
         } catch (err: any) {
             console.error('Call error:', err);
             let errorMsg = 'Could not start call.';
-            if (err.name === 'NotAllowedError') {
-                errorMsg = 'Microphone/camera permission denied. Please allow access in browser settings.';
-            } else if (err.name === 'NotFoundError') {
-                errorMsg = 'No microphone/camera found on this device.';
-            } else if (err.name === 'NotReadableError') {
-                errorMsg = 'Microphone/camera is already in use by another app.';
-            }
+            if (err.name === 'NotAllowedError') errorMsg = 'Microphone/camera permission denied. Allow access in browser settings.';
+            else if (err.name === 'NotFoundError') errorMsg = 'No microphone/camera found on this device.';
+            else if (err.name === 'NotReadableError') errorMsg = 'Microphone/camera in use by another app.';
             setCallState(prev => ({ ...prev, error: errorMsg }));
         }
-    }, [userId, remoteUserId, setupPeerConnection]);
+    }, [userId, remoteUserId, setupPeerConnection, getChannel]);
 
     const answerCall = useCallback(async (offer: RTCSessionDescriptionInit, withVideo: boolean = false) => {
         try {
@@ -227,9 +232,7 @@ export function useCall(userId: string, remoteUserId: string) {
             }));
 
             const pc = setupPeerConnection(stream);
-            const channelName = `call-${[userId, remoteUserId].sort().join('-')}`;
-            const channel = supabase.channel(channelName);
-            channelRef.current = channel;
+            const channel = getChannel();
 
             channel
                 .on('broadcast', { event: 'ice-candidate' }, async ({ payload }) => {
@@ -268,15 +271,15 @@ export function useCall(userId: string, remoteUserId: string) {
             console.error('Error answering call:', err);
             setCallState(prev => ({
                 ...prev,
-                error: 'Could not answer call. Check microphone/camera permissions.'
+                error: 'Could not answer call. Check microphone/camera permissions.',
+                status: 'idle'
             }));
         }
-    }, [userId, remoteUserId, setupPeerConnection]);
+    }, [userId, remoteUserId, setupPeerConnection, getChannel]);
 
     const endCall = useCallback(async () => {
         const duration = callState.duration;
 
-        // Notify remote
         if (channelRef.current) {
             try {
                 channelRef.current.send({
@@ -285,17 +288,18 @@ export function useCall(userId: string, remoteUserId: string) {
                     payload: { from: userId }
                 });
             } catch (e) { }
+            supabase.removeChannel(channelRef.current);
+            channelRef.current = null;
         }
 
         cleanup();
 
-        // Update call log
         if (callIdRef.current) {
             await supabase
                 .from('call_logs')
                 .update({
                     status: duration > 0 ? 'completed' : 'missed',
-                    duration: duration,
+                    duration,
                     ended_at: new Date().toISOString()
                 })
                 .eq('id', callIdRef.current);
@@ -303,11 +307,9 @@ export function useCall(userId: string, remoteUserId: string) {
         }
 
         setCallState({
-            status: 'ended',
-            isAudio: false, isVideo: false,
-            isMuted: false, isCameraOff: false,
-            duration: 0, remoteStream: null,
-            localStream: null, error: null,
+            status: 'ended', isAudio: false, isVideo: false,
+            isMuted: false, isCameraOff: false, duration: 0,
+            remoteStream: null, localStream: null, error: null,
         });
 
         setTimeout(() => {
@@ -316,16 +318,12 @@ export function useCall(userId: string, remoteUserId: string) {
     }, [userId, callState.duration]);
 
     const toggleMute = useCallback(() => {
-        localStreamRef.current?.getAudioTracks().forEach(track => {
-            track.enabled = !track.enabled;
-        });
+        localStreamRef.current?.getAudioTracks().forEach(track => { track.enabled = !track.enabled; });
         setCallState(prev => ({ ...prev, isMuted: !prev.isMuted }));
     }, []);
 
     const toggleCamera = useCallback(() => {
-        localStreamRef.current?.getVideoTracks().forEach(track => {
-            track.enabled = !track.enabled;
-        });
+        localStreamRef.current?.getVideoTracks().forEach(track => { track.enabled = !track.enabled; });
         setCallState(prev => ({ ...prev, isCameraOff: !prev.isCameraOff }));
     }, []);
 
@@ -336,6 +334,8 @@ export function useCall(userId: string, remoteUserId: string) {
                 event: 'call-rejected',
                 payload: { from: userId }
             });
+            supabase.removeChannel(channelRef.current);
+            channelRef.current = null;
         }
         cleanup();
         setCallState(prev => ({ ...prev, status: 'idle' }));
@@ -345,31 +345,52 @@ export function useCall(userId: string, remoteUserId: string) {
         setCallState(prev => ({ ...prev, error: null }));
     }, []);
 
-    // Listen for incoming calls
+    // ===== INCOMING CALL LISTENER =====
+    // This listens on the SAME channel the caller sends on
     useEffect(() => {
         if (!userId || !remoteUserId) return;
 
         const channelName = `call-${[userId, remoteUserId].sort().join('-')}`;
-        const incomingChannel = supabase.channel(`incoming-${channelName}`);
+        const listenChannel = supabase.channel(channelName, {
+            config: { broadcast: { self: false } }
+        });
+        channelRef.current = listenChannel;
 
-        incomingChannel
+        listenChannel
             .on('broadcast', { event: 'offer' }, ({ payload }) => {
-                if (payload.from === remoteUserId && callState.status === 'idle') {
+                if (payload.from === remoteUserId && statusRef.current === 'idle') {
                     setCallState(prev => ({
                         ...prev,
                         status: 'ringing',
                         isVideo: payload.isVideo
                     }));
+                    // Store offer for answering
                     (window as any).__incomingOffer = payload.offer;
                     (window as any).__incomingIsVideo = payload.isVideo;
+                }
+            })
+            .on('broadcast', { event: 'call-ended' }, ({ payload }) => {
+                if (payload.from === remoteUserId) {
+                    cleanup();
+                    setCallState(prev => ({ ...prev, status: 'idle' }));
+                }
+            })
+            .on('broadcast', { event: 'call-rejected' }, ({ payload }) => {
+                if (payload.from === remoteUserId) {
+                    cleanup();
+                    setCallState(prev => ({ ...prev, status: 'idle' }));
                 }
             })
             .subscribe();
 
         return () => {
-            supabase.removeChannel(incomingChannel);
+            // Only remove if we still own it
+            if (channelRef.current === listenChannel) {
+                supabase.removeChannel(listenChannel);
+                channelRef.current = null;
+            }
         };
-    }, [userId, remoteUserId, callState.status]);
+    }, [userId, remoteUserId]);
 
     return {
         callState,
