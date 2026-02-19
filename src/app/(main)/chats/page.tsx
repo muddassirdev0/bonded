@@ -141,12 +141,21 @@ export default function ChatsPage() {
                                 status = lastMsg.sender_id === user.uid ? 'Sent' : 'Received';
                             }
 
-                            // Count unread messages (from friend, not yet seen)
+                            // Get my last_read_at for this conversation
+                            const { data: myMembership } = await supabase
+                                .from('conversation_members').select('last_read_at')
+                                .eq('conversation_id', conversationId)
+                                .eq('user_id', user.uid).maybeSingle();
+
+                            const lastRead = myMembership?.last_read_at || '1970-01-01T00:00:00Z';
+
+                            // Count unread: messages from friend AFTER my last_read_at
                             const { count } = await supabase
                                 .from('messages').select('*', { count: 'exact', head: true })
                                 .eq('conversation_id', conversationId)
-                                .eq('sender_id', friendId);
-                            // Simple unread: count all messages from friend (in a real app you'd track last_read)
+                                .eq('sender_id', friendId)
+                                .gt('created_at', lastRead);
+
                             unreadCount = count || 0;
                         }
                     }

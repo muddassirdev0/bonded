@@ -91,7 +91,28 @@ export default function ChatPage() {
         };
 
         fetchChatDetails();
+
+        // Mark conversation as read
+        const markRead = async () => {
+            await supabase
+                .from('conversation_members')
+                .update({ last_read_at: new Date().toISOString() })
+                .eq('conversation_id', id)
+                .eq('user_id', user.uid);
+        };
+        markRead();
     }, [id, user]);
+
+    // Mark as read when new messages come in
+    useEffect(() => {
+        if (!user || !id || messages.length === 0) return;
+        supabase
+            .from('conversation_members')
+            .update({ last_read_at: new Date().toISOString() })
+            .eq('conversation_id', id)
+            .eq('user_id', user.uid)
+            .then();
+    }, [messages.length]);
 
     useEffect(() => {
         bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -540,7 +561,7 @@ export default function ChatPage() {
                     </div>
                 ) : (
                     /* Normal Input */
-                    <form onSubmit={handleSend} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <form onSubmit={handleSend} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         {/* Image picker */}
                         <input type="file" accept="image/*" id="chat-image-input" style={{ display: 'none' }}
                             onChange={handleImageSelect} />
@@ -552,31 +573,33 @@ export default function ChatPage() {
                             htmlFor="chat-camera-input"
                             whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
                             style={{
-                                width: 36, height: 36, borderRadius: '50%',
-                                background: 'rgba(255, 255, 255, 0.04)',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
+                                width: 38, height: 38, borderRadius: '50%',
+                                background: 'rgba(139, 92, 246, 0.12)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                                flexShrink: 0
                             }}
                         >
-                            <Camera size={18} style={{ color: 'var(--text-muted)' }} />
+                            <Camera size={18} style={{ color: '#A78BFA' }} />
                         </motion.label>
 
                         <motion.label
                             htmlFor="chat-image-input"
                             whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
                             style={{
-                                width: 36, height: 36, borderRadius: '50%',
-                                background: 'rgba(255, 255, 255, 0.04)',
-                                display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
+                                width: 38, height: 38, borderRadius: '50%',
+                                background: 'rgba(59, 130, 246, 0.12)',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                                flexShrink: 0
                             }}
                         >
-                            <ImageIcon size={18} style={{ color: 'var(--text-muted)' }} />
+                            <ImageIcon size={18} style={{ color: '#60A5FA' }} />
                         </motion.label>
 
                         {/* Text input */}
                         <div style={{
                             flex: 1, display: 'flex', alignItems: 'center',
-                            background: 'rgba(255, 255, 255, 0.05)',
-                            border: '1px solid rgba(255, 255, 255, 0.06)',
+                            background: 'rgba(255, 255, 255, 0.06)',
+                            border: '1px solid rgba(255, 255, 255, 0.08)',
                             borderRadius: 24, padding: '0 16px'
                         }}>
                             <input
@@ -617,12 +640,12 @@ export default function ChatPage() {
                                 onClick={startRecording}
                                 style={{
                                     width: 42, height: 42, borderRadius: '50%', border: 'none',
-                                    background: 'rgba(255, 255, 255, 0.04)',
+                                    background: 'rgba(16, 185, 129, 0.12)',
                                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                                     cursor: 'pointer', flexShrink: 0
                                 }}
                             >
-                                <Mic size={18} style={{ color: 'var(--text-muted)' }} />
+                                <Mic size={18} style={{ color: '#34D399' }} />
                             </motion.button>
                         )}
                     </form>
