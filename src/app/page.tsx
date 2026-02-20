@@ -1,7 +1,7 @@
 "use client";
 
 import Link from 'next/link';
-import { Zap, Shield, MessageCircle, Users, Lock, Sparkles, Smartphone, Download } from 'lucide-react';
+import { Zap, Shield, MessageCircle, Users, Lock, Sparkles, Smartphone } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const fadeUp: any = {
@@ -146,44 +146,9 @@ export default function LandingPage() {
           ))}
         </div>
 
-        {/* Android Download */}
-        <motion.div
-          variants={fadeUp} initial="hidden" animate="visible" custom={7}
-          style={{ width: '100%', maxWidth: 340, marginBottom: 24 }}
-        >
-          <a href="/bonded.apk" download="Bonded.apk"
-            style={{ textDecoration: 'none' }}>
-            <motion.div
-              whileHover={{ scale: 1.02, boxShadow: '0 8px 30px rgba(34, 197, 94, 0.3)' }}
-              whileTap={{ scale: 0.98 }}
-              className="glass-card"
-              style={{
-                padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 14,
-                border: '1px solid rgba(34, 197, 94, 0.2)', cursor: 'pointer',
-                background: 'rgba(34, 197, 94, 0.06)'
-              }}
-            >
-              <div style={{
-                width: 46, height: 46, borderRadius: 14,
-                background: 'linear-gradient(135deg, #22C55E, #16A34A)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                boxShadow: '0 4px 15px rgba(34, 197, 94, 0.3)', flexShrink: 0
-              }}>
-                <Smartphone size={22} color="white" />
-              </div>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, marginBottom: 2 }}>DOWNLOAD FOR</div>
-                <div style={{ fontSize: 16, fontWeight: 800, color: 'white' }}>Android</div>
-                <div style={{ fontSize: 10, color: 'var(--accent-green)', fontWeight: 600 }}>v1.0.0 • Free</div>
-              </div>
-              <Download size={20} style={{ color: 'var(--accent-green)', flexShrink: 0 }} />
-            </motion.div>
-          </a>
-        </motion.div>
-
         {/* CTA Buttons */}
         <motion.div
-          variants={fadeUp} initial="hidden" animate="visible" custom={8}
+          variants={fadeUp} initial="hidden" animate="visible" custom={7}
           style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%', maxWidth: 340 }}
         >
           <Link href="/signup">
@@ -208,6 +173,19 @@ export default function LandingPage() {
           </Link>
         </motion.div>
 
+        {/* Download App Link */}
+        <motion.div
+          variants={fadeUp} initial="hidden" animate="visible" custom={8}
+          style={{ marginTop: 24 }}
+        >
+          <Link href="/download" style={{
+            color: 'var(--text-muted)', fontSize: 13, textDecoration: 'none',
+            display: 'flex', alignItems: 'center', gap: 6, fontWeight: 500
+          }}>
+            <Smartphone size={14} /> Download Android App
+          </Link>
+        </motion.div>
+
         {/* Footer */}
         <motion.p
           variants={fadeUp} initial="hidden" animate="visible" custom={9}
@@ -219,4 +197,3 @@ export default function LandingPage() {
     </div>
   );
 }
-

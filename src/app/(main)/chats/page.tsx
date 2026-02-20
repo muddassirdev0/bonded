@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useRouter } from 'next/navigation';
-import { Search, MoreHorizontal, UserPlus, X, UserCheck, MessageCircle, Plus, Camera } from 'lucide-react';
+import { Search, MoreHorizontal, UserPlus, X, UserCheck, MessageCircle, Plus, Camera, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface Friend {
@@ -732,6 +732,20 @@ export default function ChatsPage() {
                                 <div style={{ fontWeight: 700, fontSize: 14, color: 'white' }}>{viewingStory.profile?.display_name || 'You'}</div>
                                 <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{formatTime(viewingStory.created_at)}</div>
                             </div>
+
+                            {/* Delete Button for own story */}
+                            {viewingStory.user_id === user?.uid && (
+                                <motion.button
+                                    whileTap={{ scale: 0.8 }}
+                                    onClick={(e) => { e.stopPropagation(); handleDeleteStory(viewingStory.id); }}
+                                    style={{
+                                        marginLeft: 'auto', background: 'rgba(255,255,255,0.1)', border: 'none',
+                                        borderRadius: '50%', width: 34, height: 34, display: 'flex',
+                                        alignItems: 'center', justifyContent: 'center', color: 'white', cursor: 'pointer'
+                                    }}>
+                                    <Trash2 size={16} />
+                                </motion.button>
+                            )}
                         </div>
 
                         {/* Content */}

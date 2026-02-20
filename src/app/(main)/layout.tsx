@@ -54,7 +54,12 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
     const isSubPage = pathname.split('/').length > 2 && pathname.startsWith('/chats/');
 
     return (
-        <div style={{ minHeight: '100vh', background: 'var(--bg-primary)', paddingBottom: isSubPage ? 0 : 72 }}>
+        <div style={{
+            minHeight: '100vh',
+            background: 'var(--bg-primary)',
+            paddingBottom: isSubPage ? 0 : 72,
+            paddingTop: 'env(safe-area-inset-top, 0px)'
+        }}>
             <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
