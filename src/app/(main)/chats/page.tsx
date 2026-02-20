@@ -175,9 +175,35 @@ export default function ChatsPage() {
                     return tB - tA;
                 });
 
+                // Always ensure Bonded AI is in the list for everyone
+                const aiAgentId = 'bonded-ai-id'; // This should match your actual AI agent UUID
+                if (!friendsData.find(f => f.friend_id === aiAgentId)) {
+                    // Fetch AI profile if not already there
+                    const { data: aiProfile } = await supabase.from('profiles').select('*').eq('username', 'bonded').single();
+                    if (aiProfile) {
+                        friendsData.unshift({
+                            id: aiProfile.id, friend_id: aiProfile.id,
+                            username: aiProfile.username || 'bonded', display_name: aiProfile.display_name || 'Bonded AI',
+                            avatar_url: aiProfile.avatar_url || '', bio: aiProfile.bio || 'Your personal Bonded assistant',
+                            unread_count: 0, status: 'AI Assistant'
+                        });
+                    }
+                }
+
                 setFriends(friendsData);
             } else {
-                setFriends([]);
+                // If no friends, still check for AI
+                const { data: aiProfile } = await supabase.from('profiles').select('*').eq('username', 'bonded').single();
+                if (aiProfile) {
+                    setFriends([{
+                        id: aiProfile.id, friend_id: aiProfile.id,
+                        username: aiProfile.username || 'bonded', display_name: aiProfile.display_name || 'Bonded AI',
+                        avatar_url: aiProfile.avatar_url || '', bio: aiProfile.bio || 'Your personal Bonded assistant',
+                        unread_count: 0, status: 'AI Assistant'
+                    }]);
+                } else {
+                    setFriends([]);
+                }
             }
 
             // Pending requests
@@ -765,7 +791,14 @@ export default function ChatsPage() {
                         {/* Content */}
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
                             {viewingStory.media_type === 'video' ? (
-                                <video src={viewingStory.media_url} autoPlay style={{ maxWidth: '100%', maxHeight: '70vh', borderRadius: 12 }} />
+                                <video
+                                    src={viewingStory.media_url}
+                                    autoPlay
+                                    playsInline
+                                    muted
+                                    loop
+                                    style={{ maxWidth: '100%', maxHeight: '70vh', borderRadius: 12 }}
+                                />
                             ) : (
                                 <img src={viewingStory.media_url} style={{ maxWidth: '100%', maxHeight: '70vh', borderRadius: 12, objectFit: 'contain' }} />
                             )}

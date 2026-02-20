@@ -57,8 +57,12 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         <div style={{
             minHeight: '100vh',
             background: 'var(--bg-primary)',
-            paddingBottom: isSubPage ? 0 : 72,
-            paddingTop: 'env(safe-area-inset-top, 0px)'
+            paddingBottom: isSubPage ? 'env(safe-area-inset-bottom, 0px)' : 72,
+            paddingTop: 'env(safe-area-inset-top, 0px)',
+            paddingLeft: 'env(safe-area-inset-left, 0px)',
+            paddingRight: 'env(safe-area-inset-right, 0px)',
+            maxWidth: '100vw',
+            overflowX: 'hidden'
         }}>
             <motion.div
                 initial={{ opacity: 0 }}

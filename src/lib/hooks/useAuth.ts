@@ -29,14 +29,18 @@ async function registerFCMToken(userId: string) {
         if (typeof window === 'undefined') return;
 
         const permission = await Notification.requestPermission();
+        console.log('Notification permission:', permission);
         if (permission !== 'granted') return;
 
         const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
         const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: registration });
 
         if (token) {
+            console.log('FCM token generated:', token);
             await supabase.from('profiles').update({ fcm_token: token }).eq('id', userId);
-            console.log('FCM token registered');
+            console.log('FCM token registered in Supabase');
+        } else {
+            console.warn('No FCM token generated');
         }
     } catch (err) {
         console.warn('FCM registration failed:', err);
