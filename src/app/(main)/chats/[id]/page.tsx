@@ -253,17 +253,14 @@ export default function ChatPage() {
         }
     };
 
-    // GIF SEARCH (using Tenor API v2 with Firebase API key)
+    // GIF SEARCH (via Supabase edge function proxy)
     const searchGifs = async (query: string) => {
         setGifLoading(true);
         try {
-            const key = 'AIzaSyBTeOPspaQd5oocS-v00qJYZ4Tr3e9qsJE';
-            const url = query.trim()
-                ? `https://tenor.googleapis.com/v2/search?q=${encodeURIComponent(query)}&key=${key}&limit=20&media_filter=tinygif,gif&client_key=bonded-app`
-                : `https://tenor.googleapis.com/v2/featured?key=${key}&limit=20&media_filter=tinygif,gif&client_key=bonded-app`;
+            const url = `https://cekcccwlahbqajrouwrs.supabase.co/functions/v1/search-gifs?q=${encodeURIComponent(query)}&limit=20`;
             const res = await fetch(url);
             const data = await res.json();
-            setGifs(data.results || []);
+            setGifs(data.gifs || []);
         } catch (e) {
             console.error('GIF search error:', e);
         } finally {
@@ -810,12 +807,10 @@ export default function ChatPage() {
                                 <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: 30, color: 'var(--text-muted)', fontSize: 13 }}>Search for GIFs</div>
                             ) : (
                                 gifs.map((gif: any) => {
-                                    const url = gif.media_formats?.tinygif?.url || gif.media_formats?.gif?.url;
-                                    const fullUrl = gif.media_formats?.gif?.url || url;
-                                    if (!url) return null;
+                                    if (!gif.preview) return null;
                                     return (
                                         <motion.img key={gif.id} whileTap={{ scale: 0.95 }}
-                                            src={url} onClick={() => sendGif(fullUrl)}
+                                            src={gif.preview} onClick={() => sendGif(gif.full || gif.preview)}
                                             style={{ width: '100%', height: 120, objectFit: 'cover', borderRadius: 10, cursor: 'pointer', background: 'rgba(255,255,255,0.03)' }}
                                         />
                                     );

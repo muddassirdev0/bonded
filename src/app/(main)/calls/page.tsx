@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { supabase } from '@/lib/supabase';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 interface CallLog {
     id: string;
@@ -14,6 +15,7 @@ interface CallLog {
     duration: number;
     started_at: string;
     ended_at: string | null;
+    conversation_id?: string;
     other_profile?: {
         display_name: string;
         username: string;
@@ -23,6 +25,7 @@ interface CallLog {
 
 export default function CallsPage() {
     const { user } = useAuth();
+    const router = useRouter();
     const [calls, setCalls] = useState<CallLog[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -46,14 +49,35 @@ export default function CallsPage() {
                     .select('id, display_name, username, avatar_url')
                     .in('id', uniqueIds);
 
-                const enriched = data.map(call => {
+                // Find conversation IDs for each user pair
+                const enriched = await Promise.all(data.map(async (call) => {
                     const otherId = call.caller_id === user.uid ? call.receiver_id : call.caller_id;
                     const profile = profiles?.find(p => p.id === otherId);
-                    return {
-                        ...call,
-                        other_profile: profile || undefined
-                    };
-                });
+
+                    // Find conversation between these two users
+                    const { data: convMembers } = await supabase
+                        .from('conversation_members')
+                        .select('conversation_id')
+                        .eq('user_id', user.uid);
+
+                    let conversationId: string | undefined;
+                    if (convMembers) {
+                        for (const cm of convMembers) {
+                            const { data: otherMember } = await supabase
+                                .from('conversation_members')
+                                .select('conversation_id')
+                                .eq('conversation_id', cm.conversation_id)
+                                .eq('user_id', otherId)
+                                .maybeSingle();
+                            if (otherMember) {
+                                conversationId = cm.conversation_id;
+                                break;
+                            }
+                        }
+                    }
+
+                    return { ...call, other_profile: profile || undefined, conversation_id: conversationId };
+                }));
 
                 setCalls(enriched);
             }
@@ -62,6 +86,12 @@ export default function CallsPage() {
 
         fetchCalls();
     }, [user]);
+
+    const handleCallBack = (call: CallLog) => {
+        if (call.conversation_id) {
+            router.push(`/chats/${call.conversation_id}`);
+        }
+    };
 
     const getStatusIcon = (call: CallLog) => {
         if (call.status === 'missed') return <PhoneMissed size={14} style={{ color: 'var(--accent-red)' }} />;
@@ -103,7 +133,7 @@ export default function CallsPage() {
     };
 
     return (
-        <div style={{ paddingBottom: 80 }}>
+        <div style={{ height: '100vh', overflowY: 'auto', paddingBottom: 100 }}>
             {/* Header */}
             <motion.div
                 className="app-header"
@@ -169,8 +199,9 @@ export default function CallsPage() {
                             }}
                             whileHover={{ scale: 1.1 }}
                             whileTap={{ scale: 0.9 }}
+                            onClick={() => handleCallBack(call)}
                         >
-                            {call.duration > 0 ? <Video size={16} /> : <Phone size={16} />}
+                            <Phone size={16} />
                         </motion.button>
                     </motion.div>
                 ))
