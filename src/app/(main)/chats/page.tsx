@@ -682,7 +682,7 @@ export default function ChatsPage() {
                             )}
                         </div>
 
-                        <div style={{ padding: '16px 20px 32px' }}>
+                        <div style={{ padding: '16px 20px 100px' }}>
                             <input type="text" placeholder="Add a caption..." value={storyCaption}
                                 onChange={(e) => setStoryCaption(e.target.value)}
                                 style={{
@@ -693,12 +693,13 @@ export default function ChatsPage() {
                             <motion.button onClick={handlePostStory} disabled={storyUploading}
                                 whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                                 style={{
-                                    width: '100%', padding: '13px', borderRadius: 12,
+                                    width: '100%', padding: '14px', borderRadius: 14,
                                     background: 'linear-gradient(135deg, #8B5CF6, #7C3AED)',
                                     color: 'white', fontWeight: 700, border: 'none', cursor: 'pointer',
-                                    fontSize: 14, opacity: storyUploading ? 0.7 : 1
+                                    fontSize: 15, opacity: storyUploading ? 0.7 : 1,
+                                    boxShadow: '0 4px 20px rgba(139, 92, 246, 0.3)'
                                 }}>
-                                {storyUploading ? 'Posting...' : 'Share to Story'}
+                                {storyUploading ? '📤 Posting...' : '🚀 Share to Story'}
                             </motion.button>
                         </div>
                     </motion.div>

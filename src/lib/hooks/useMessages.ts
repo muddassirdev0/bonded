@@ -152,7 +152,10 @@ export function useMessages(conversationId: string) {
     };
 
     const uploadMedia = async (file: File, folder: string = 'images'): Promise<string | null> => {
-        const ext = file.name.split('.').pop() || 'bin';
+        // Better extension detection for mobile gallery images
+        const mimeMap: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/gif': 'gif', 'image/webp': 'webp', 'audio/webm': 'webm', 'audio/mp4': 'm4a', 'video/mp4': 'mp4' };
+        const nameExt = file.name?.includes('.') ? file.name.split('.').pop() : null;
+        const ext = nameExt || mimeMap[file.type] || 'bin';
         const fileName = `${folder}/${conversationId}/${Date.now()}-${Math.random().toString(36).substr(2, 9)}.${ext}`;
 
         const { error } = await supabase.storage

@@ -5,7 +5,7 @@ import { auth } from '@/lib/firebase';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { LogOut, ShieldCheck, Camera, ChevronRight, Lock, HelpCircle, Zap, Edit3, X, Trash2, Plus, Check, Circle } from 'lucide-react';
+import { LogOut, ShieldCheck, Camera, ChevronRight, Lock, HelpCircle, Zap, Edit3, X, Trash2, Plus, CheckSquare } from 'lucide-react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -27,12 +27,6 @@ export default function ProfilePage() {
     const [editUsername, setEditUsername] = useState('');
     const [editBio, setEditBio] = useState('');
     const [editLoading, setEditLoading] = useState(false);
-
-    // Todos
-    interface Todo { id: string; text: string; completed: boolean; created_at: string; }
-    const [todos, setTodos] = useState<Todo[]>([]);
-    const [newTodo, setNewTodo] = useState('');
-    const [showTodoInput, setShowTodoInput] = useState(false);
 
     // Fetch friends count
     useEffect(() => {
@@ -56,32 +50,6 @@ export default function ProfilePage() {
 
         fetchFriendsCount();
     }, [user]);
-
-    // Fetch todos
-    useEffect(() => {
-        if (!user) return;
-        const fetchTodos = async () => {
-            const { data } = await supabase.from('todos').select('*').eq('user_id', user.uid).order('created_at', { ascending: false });
-            if (data) setTodos(data);
-        };
-        fetchTodos();
-    }, [user]);
-
-    const addTodo = async () => {
-        if (!user || !newTodo.trim()) return;
-        const { data } = await supabase.from('todos').insert({ user_id: user.uid, text: newTodo.trim() }).select().single();
-        if (data) { setTodos(prev => [data, ...prev]); setNewTodo(''); setShowTodoInput(false); }
-    };
-
-    const toggleTodo = async (id: string, completed: boolean) => {
-        setTodos(prev => prev.map(t => t.id === id ? { ...t, completed: !completed } : t));
-        await supabase.from('todos').update({ completed: !completed }).eq('id', id);
-    };
-
-    const deleteTodo = async (id: string) => {
-        setTodos(prev => prev.filter(t => t.id !== id));
-        await supabase.from('todos').delete().eq('id', id);
-    };
 
     const handleLogout = async () => {
         await auth.signOut();
@@ -150,6 +118,7 @@ export default function ProfilePage() {
     const menuItems = [
         ...(profile.role === 'admin' ? [{ icon: ShieldCheck, label: 'Admin Dashboard', color: 'var(--accent-purple)', href: '/admin' }] : []),
         { icon: Edit3, label: 'Edit Profile', color: 'var(--accent-cyan)', action: openEditModal },
+        { icon: CheckSquare, label: 'My Todos', color: 'var(--accent-yellow)', href: '/todos' },
         { icon: Lock, label: 'Privacy', color: 'var(--accent-green)', href: '/privacy' },
         { icon: HelpCircle, label: 'Help & Support', color: 'var(--text-secondary)', href: '/help' },
     ];
@@ -334,69 +303,6 @@ export default function ProfilePage() {
                 </motion.button>
             </div>
 
-            {/* My Todos */}
-            <div style={{ margin: '0 16px 12px' }}>
-                <motion.div
-                    className="glass-card"
-                    style={{ overflow: 'hidden' }}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.5 }}
-                >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                        <div style={{ fontWeight: 700, fontSize: 15 }}>📝 My Todos</div>
-                        <motion.button
-                            whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
-                            onClick={() => setShowTodoInput(!showTodoInput)}
-                            style={{ background: 'rgba(139,92,246,0.12)', border: 'none', borderRadius: 8, width: 28, height: 28, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: 'var(--accent-purple)' }}
-                        ><Plus size={16} /></motion.button>
-                    </div>
-
-                    <AnimatePresence>
-                        {showTodoInput && (
-                            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }}
-                                style={{ overflow: 'hidden', borderBottom: '1px solid rgba(255,255,255,0.04)' }}>
-                                <div style={{ display: 'flex', gap: 8, padding: '10px 16px' }}>
-                                    <input
-                                        value={newTodo} onChange={e => setNewTodo(e.target.value)}
-                                        onKeyDown={e => e.key === 'Enter' && addTodo()}
-                                        placeholder="What needs to be done?"
-                                        autoFocus
-                                        style={{ flex: 1, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 10, padding: '8px 12px', color: 'white', fontSize: 13, outline: 'none' }}
-                                    />
-                                    <motion.button whileTap={{ scale: 0.9 }} onClick={addTodo}
-                                        style={{ background: 'var(--accent-purple)', border: 'none', borderRadius: 10, padding: '8px 14px', color: 'white', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
-                                    >Add</motion.button>
-                                </div>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-
-                    {todos.length === 0 ? (
-                        <div style={{ padding: '20px 16px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-                            No todos yet — tap + to add one!
-                        </div>
-                    ) : (
-                        todos.map(todo => (
-                            <motion.div key={todo.id}
-                                initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }}
-                                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', borderBottom: '1px solid rgba(255,255,255,0.02)' }}
-                            >
-                                <motion.button whileTap={{ scale: 0.8 }} onClick={() => toggleTodo(todo.id, todo.completed)}
-                                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: todo.completed ? 'var(--accent-purple)' : 'var(--text-muted)', flexShrink: 0 }}>
-                                    {todo.completed ? <Check size={18} /> : <Circle size={18} />}
-                                </motion.button>
-                                <span style={{ flex: 1, fontSize: 13, color: todo.completed ? 'var(--text-muted)' : 'white', textDecoration: todo.completed ? 'line-through' : 'none', fontWeight: 500 }}>{todo.text}</span>
-                                <motion.button whileTap={{ scale: 0.8 }} onClick={() => deleteTodo(todo.id)}
-                                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', flexShrink: 0, opacity: 0.6 }}>
-                                    <Trash2 size={14} />
-                                </motion.button>
-                            </motion.div>
-                        ))
-                    )}
-                </motion.div>
-            </div>
-
             {/* Menu */}
             <div style={{ margin: '0 16px' }}>
                 <motion.div
@@ -565,6 +471,6 @@ export default function ProfilePage() {
                     </motion.div>
                 )}
             </AnimatePresence>
-        </div>
+        </div >
     );
 }
