@@ -123,7 +123,7 @@ export default function ProfilePage() {
     ];
 
     return (
-        <div style={{ paddingBottom: 100 }}>
+        <div style={{ paddingBottom: 100, height: '100vh', overflowY: 'auto' }}>
             {/* Header */}
             <motion.div
                 className="app-header"

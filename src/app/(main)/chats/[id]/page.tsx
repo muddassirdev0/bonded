@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { useMessages, Message } from '@/lib/hooks/useMessages';
 import { useCall } from '@/lib/hooks/useCall';
-import { ArrowLeft, Send, Phone, Video, Image as ImageIcon, Mic, MicOff, X, Eye, Square, PhoneOff, VideoOff, Camera } from 'lucide-react';
+import { ArrowLeft, Send, Phone, Video, Image as ImageIcon, Mic, MicOff, X, Eye, Square, PhoneOff, VideoOff, Camera, Trash2, Smile } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 // Link detection regex
@@ -37,7 +37,7 @@ function renderMessageContent(content: string) {
 export default function ChatPage() {
     const { id } = useParams() as { id: string };
     const { user } = useAuth();
-    const { messages, loading, sendMessage, markOneTimeViewed, uploadMedia } = useMessages(id);
+    const { messages, loading, sendMessage, markOneTimeViewed, deleteMessage, canDeleteMessage, uploadMedia } = useMessages(id);
     const [newMessage, setNewMessage] = useState('');
     const [otherUser, setOtherUser] = useState<any>(null);
     const bottomRef = useRef<HTMLDivElement>(null);
@@ -55,6 +55,16 @@ export default function ChatPage() {
     const mediaRecorderRef = useRef<MediaRecorder | null>(null);
     const audioChunksRef = useRef<Blob[]>([]);
     const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
+    const cancelledRef = useRef(false);
+
+    // Message delete
+    const [deleteMenuMsg, setDeleteMenuMsg] = useState<Message | null>(null);
+
+    // GIF picker
+    const [showGifPicker, setShowGifPicker] = useState(false);
+    const [gifSearch, setGifSearch] = useState('');
+    const [gifs, setGifs] = useState<any[]>([]);
+    const [gifLoading, setGifLoading] = useState(false);
 
     // One-time image viewer
     const [viewingImage, setViewingImage] = useState<Message | null>(null);
@@ -168,6 +178,7 @@ export default function ChatPage() {
     // VOICE HANDLING
     const startRecording = async () => {
         try {
+            cancelledRef.current = false;
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             const mediaRecorder = new MediaRecorder(stream);
             mediaRecorderRef.current = mediaRecorder;
@@ -179,6 +190,12 @@ export default function ChatPage() {
 
             mediaRecorder.onstop = async () => {
                 stream.getTracks().forEach(t => t.stop());
+                // If cancelled, don't send
+                if (cancelledRef.current) {
+                    cancelledRef.current = false;
+                    audioChunksRef.current = [];
+                    return;
+                }
                 const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
                 const audioFile = new File([audioBlob], `voice-${Date.now()}.webm`, { type: 'audio/webm' });
 
@@ -206,6 +223,7 @@ export default function ChatPage() {
 
     const stopRecording = () => {
         if (mediaRecorderRef.current && isRecording) {
+            cancelledRef.current = false;
             mediaRecorderRef.current.stop();
             setIsRecording(false);
             if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
@@ -214,12 +232,43 @@ export default function ChatPage() {
 
     const cancelRecording = () => {
         if (mediaRecorderRef.current && isRecording) {
-            mediaRecorderRef.current.stream.getTracks().forEach(t => t.stop());
-            mediaRecorderRef.current = null;
+            cancelledRef.current = true;
+            mediaRecorderRef.current.stop();
             setIsRecording(false);
             setRecordingTime(0);
-            audioChunksRef.current = [];
             if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+        }
+    };
+
+    // GIF SEARCH
+    const searchGifs = async (query: string) => {
+        setGifLoading(true);
+        try {
+            const key = 'AIzaSyBPktuJf0Y0oVIEVWohsVqZGH-GxJCwcuU';
+            const url = query.trim()
+                ? `https://tenor.googleapis.com/v2/search?q=${encodeURIComponent(query)}&key=${key}&limit=20&media_filter=gif`
+                : `https://tenor.googleapis.com/v2/featured?key=${key}&limit=20&media_filter=gif`;
+            const res = await fetch(url);
+            const data = await res.json();
+            setGifs(data.results || []);
+        } catch (e) {
+            console.error('GIF search error:', e);
+        } finally {
+            setGifLoading(false);
+        }
+    };
+
+    const sendGif = async (gifUrl: string) => {
+        await sendMessage(gifUrl, 'image', gifUrl);
+        setShowGifPicker(false);
+        setGifSearch('');
+        setGifs([]);
+    };
+
+    // MESSAGE DELETE
+    const handleLongPress = (msg: Message) => {
+        if (canDeleteMessage(msg)) {
+            setDeleteMenuMsg(msg);
         }
     };
 
@@ -345,6 +394,7 @@ export default function ChatPage() {
                                     animate={{ opacity: 1, y: 0 }}
                                     transition={{ duration: 0.25 }}
                                     style={{ padding: '6px 20px' }}
+                                    onContextMenu={(e) => { e.preventDefault(); handleLongPress(msg); }}
                                 >
                                     {/* Sender Name */}
                                     <div style={{ fontSize: 12, fontWeight: 700, color: nameColor, marginBottom: 3 }}>
@@ -595,6 +645,21 @@ export default function ChatPage() {
                             <ImageIcon size={18} style={{ color: '#60A5FA' }} />
                         </motion.label>
 
+                        {/* GIF button */}
+                        <motion.button
+                            type="button"
+                            whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+                            onClick={() => { setShowGifPicker(true); searchGifs(''); }}
+                            style={{
+                                width: 38, height: 38, borderRadius: '50%',
+                                background: 'rgba(251, 191, 36, 0.12)', border: 'none',
+                                display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
+                                flexShrink: 0, fontSize: 13, fontWeight: 800, color: '#FBBF24'
+                            }}
+                        >
+                            GIF
+                        </motion.button>
+
                         {/* Text input */}
                         <div style={{
                             flex: 1, display: 'flex', alignItems: 'center',
@@ -674,8 +739,75 @@ export default function ChatPage() {
                             position: 'absolute', bottom: 40, left: '50%', transform: 'translateX(-50%)',
                             fontSize: 13, color: 'var(--text-muted)', fontWeight: 600
                         }}>
-                            Tap anywhere to close · This image will disappear
+                            Tap anywhere to close
                         </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* Delete Confirmation Modal */}
+            <AnimatePresence>
+                {deleteMenuMsg && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+                        onClick={() => setDeleteMenuMsg(null)}
+                        style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+                        <motion.div initial={{ scale: 0.85 }} animate={{ scale: 1 }} exit={{ scale: 0.85 }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="glass-card" style={{ width: '100%', maxWidth: 280, padding: 20, textAlign: 'center' }}>
+                            <Trash2 size={28} style={{ color: '#EF4444', marginBottom: 12 }} />
+                            <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 6 }}>Delete Message?</h3>
+                            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 16 }}>This can&apos;t be undone</p>
+                            <div style={{ display: 'flex', gap: 8 }}>
+                                <button onClick={() => setDeleteMenuMsg(null)}
+                                    style={{ flex: 1, padding: '10px', borderRadius: 10, background: 'rgba(255,255,255,0.06)', color: 'var(--text-secondary)', border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>Cancel</button>
+                                <button onClick={async () => { await deleteMessage(deleteMenuMsg.id); setDeleteMenuMsg(null); }}
+                                    style={{ flex: 1, padding: '10px', borderRadius: 10, background: '#EF4444', color: 'white', border: 'none', cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>Delete</button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* GIF Picker Modal */}
+            <AnimatePresence>
+                {showGifPicker && (
+                    <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+                        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                        style={{
+                            position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 200,
+                            height: '55vh', background: 'var(--bg-secondary)',
+                            borderRadius: '20px 20px 0 0', display: 'flex', flexDirection: 'column',
+                            boxShadow: '0 -4px 30px rgba(0,0,0,0.5)'
+                        }}>
+                        <div style={{ display: 'flex', alignItems: 'center', padding: '12px 16px', gap: 10, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+                            <input
+                                type="text" value={gifSearch}
+                                onChange={(e) => { setGifSearch(e.target.value); searchGifs(e.target.value); }}
+                                placeholder="Search GIFs..." autoFocus
+                                style={{ flex: 1, background: 'rgba(255,255,255,0.06)', border: 'none', borderRadius: 12, padding: '10px 14px', color: 'white', fontSize: 14, outline: 'none' }}
+                            />
+                            <button onClick={() => { setShowGifPicker(false); setGifs([]); setGifSearch(''); }}
+                                style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}><X size={20} /></button>
+                        </div>
+                        <div style={{ flex: 1, overflowY: 'auto', padding: 8, display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6 }}>
+                            {gifLoading ? (
+                                <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: 30, color: 'var(--text-muted)' }}>Loading...</div>
+                            ) : gifs.length === 0 ? (
+                                <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: 30, color: 'var(--text-muted)', fontSize: 13 }}>Search for GIFs</div>
+                            ) : (
+                                gifs.map((gif: any) => {
+                                    const url = gif.media_formats?.gif?.url || gif.media_formats?.tinygif?.url;
+                                    if (!url) return null;
+                                    return (
+                                        <motion.img key={gif.id} whileTap={{ scale: 0.95 }}
+                                            src={url} onClick={() => sendGif(url)}
+                                            style={{ width: '100%', height: 120, objectFit: 'cover', borderRadius: 10, cursor: 'pointer', background: 'rgba(255,255,255,0.03)' }}
+                                        />
+                                    );
+                                })
+                            )}
+                        </div>
+                        <div style={{ textAlign: 'center', padding: '6px', fontSize: 10, color: 'var(--text-muted)' }}>Powered by Tenor</div>
                     </motion.div>
                 )}
             </AnimatePresence>

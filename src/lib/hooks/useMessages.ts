@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from './useAuth';
 
@@ -34,7 +34,6 @@ export function useMessages(conversationId: string) {
 
         fetchMessages();
 
-        // Subscribe to new messages
         const channel = supabase
             .channel(`conversation:${conversationId}`)
             .on(
@@ -109,29 +108,44 @@ export function useMessages(conversationId: string) {
     const markOneTimeViewed = async (messageId: string) => {
         if (!user) return;
 
-        // Mark as viewed
+        // Just mark as viewed — do NOT delete
         await supabase
             .from('messages')
             .update({ viewed_at: new Date().toISOString() })
             .eq('id', messageId);
+    };
 
-        // Delete after 3 seconds
-        setTimeout(async () => {
-            // Get message to find media_url before deleting
-            const msg = messages.find(m => m.id === messageId);
-            if (msg?.media_url) {
-                // Delete media from storage
-                const path = msg.media_url.split('/chat-media/')[1];
-                if (path) {
-                    await supabase.storage.from('chat-media').remove([path]);
-                }
+    const deleteMessage = async (messageId: string) => {
+        if (!user) return;
+
+        const msg = messages.find(m => m.id === messageId);
+        if (!msg) return;
+
+        // Only allow delete within 3 hours and only own messages
+        const msgTime = new Date(msg.created_at).getTime();
+        const now = Date.now();
+        const threeHours = 3 * 60 * 60 * 1000;
+
+        if (msg.sender_id !== user.uid) return;
+        if (now - msgTime > threeHours) return;
+
+        // Delete media from storage if exists
+        if (msg.media_url) {
+            const path = msg.media_url.split('/chat-media/')[1];
+            if (path) {
+                await supabase.storage.from('chat-media').remove([path]);
             }
+        }
 
-            await supabase
-                .from('messages')
-                .delete()
-                .eq('id', messageId);
-        }, 3000);
+        await supabase.from('messages').delete().eq('id', messageId);
+    };
+
+    const canDeleteMessage = (msg: Message) => {
+        if (!user || msg.sender_id !== user.uid) return false;
+        const msgTime = new Date(msg.created_at).getTime();
+        const now = Date.now();
+        const threeHours = 3 * 60 * 60 * 1000;
+        return (now - msgTime) <= threeHours;
     };
 
     const uploadMedia = async (file: File, folder: string = 'images'): Promise<string | null> => {
@@ -154,5 +168,5 @@ export function useMessages(conversationId: string) {
         return publicUrl;
     };
 
-    return { messages, loading, sendMessage, markOneTimeViewed, uploadMedia };
+    return { messages, loading, sendMessage, markOneTimeViewed, deleteMessage, canDeleteMessage, uploadMedia };
 }
