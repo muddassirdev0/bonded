@@ -328,6 +328,22 @@ export default function ChatsPage() {
         setRequests(prev => prev.filter(r => r.id !== reqId));
     };
 
+    const closeStory = () => {
+        setViewingStory(null);
+    };
+
+    const handleDeleteStory = async (storyId: string) => {
+        if (!confirm('Delete this story?')) return;
+        try {
+            const { error } = await supabase.from('stories').delete().eq('id', storyId);
+            if (error) throw error;
+            setViewingStory(null);
+            fetchStories();
+        } catch (e: any) {
+            alert('Error deleting story: ' + e.message);
+        }
+    };
+
     const handleOpenChat = async (friend: Friend) => {
         if (friend.conversation_id) {
             router.push(`/chats/${friend.conversation_id}`);
