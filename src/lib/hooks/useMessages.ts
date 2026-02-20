@@ -18,6 +18,24 @@ export function useMessages(conversationId: string) {
     const [loading, setLoading] = useState(true);
     const { user } = useAuth();
 
+    // Cache key for this conversation
+    const cacheKey = `messages_cache_${conversationId}`;
+
+    // Load from cache on mount
+    useEffect(() => {
+        if (!conversationId) return;
+        const cached = localStorage.getItem(cacheKey);
+        if (cached) {
+            try {
+                const parsed = JSON.parse(cached);
+                setMessages(parsed);
+                // Keep loading=true until synced
+            } catch (e) {
+                console.error('Cache parse error:', e);
+            }
+        }
+    }, [conversationId, cacheKey]);
+
     useEffect(() => {
         if (!conversationId) return;
 
@@ -28,7 +46,10 @@ export function useMessages(conversationId: string) {
                 .eq('conversation_id', conversationId)
                 .order('created_at', { ascending: true });
 
-            if (data) setMessages(data);
+            if (data) {
+                setMessages(data);
+                localStorage.setItem(cacheKey, JSON.stringify(data));
+            }
             setLoading(false);
         };
 
@@ -48,7 +69,9 @@ export function useMessages(conversationId: string) {
                     const newMessage = payload.new as Message;
                     setMessages((current) => {
                         if (current.find(m => m.id === newMessage.id)) return current;
-                        return [...current, newMessage];
+                        const updated = [...current, newMessage];
+                        localStorage.setItem(cacheKey, JSON.stringify(updated));
+                        return updated;
                     });
                 }
             )
@@ -61,7 +84,11 @@ export function useMessages(conversationId: string) {
                     filter: `conversation_id=eq.${conversationId}`
                 },
                 (payload) => {
-                    setMessages((current) => current.filter(m => m.id !== payload.old.id));
+                    setMessages((current) => {
+                        const updated = current.filter(m => m.id !== payload.old.id);
+                        localStorage.setItem(cacheKey, JSON.stringify(updated));
+                        return updated;
+                    });
                 }
             )
             .on(
@@ -73,9 +100,11 @@ export function useMessages(conversationId: string) {
                     filter: `conversation_id=eq.${conversationId}`
                 },
                 (payload) => {
-                    setMessages((current) =>
-                        current.map(m => m.id === payload.new.id ? { ...m, ...payload.new } as Message : m)
-                    );
+                    setMessages((current) => {
+                        const updated = current.map(m => m.id === payload.new.id ? { ...m, ...payload.new } as Message : m);
+                        localStorage.setItem(cacheKey, JSON.stringify(updated));
+                        return updated;
+                    });
                 }
             )
             .subscribe();
@@ -83,7 +112,7 @@ export function useMessages(conversationId: string) {
         return () => {
             supabase.removeChannel(channel);
         };
-    }, [conversationId]);
+    }, [conversationId, cacheKey]);
 
     const sendMessage = async (content: string, type: 'text' | 'image' | 'voice' = 'text', mediaUrl?: string, isOneTime: boolean = false) => {
         if (!user) return;
@@ -108,7 +137,6 @@ export function useMessages(conversationId: string) {
     const markOneTimeViewed = async (messageId: string) => {
         if (!user) return;
 
-        // Just mark as viewed — do NOT delete
         await supabase
             .from('messages')
             .update({ viewed_at: new Date().toISOString() })
@@ -121,7 +149,6 @@ export function useMessages(conversationId: string) {
         const msg = messages.find(m => m.id === messageId);
         if (!msg) return;
 
-        // Only allow delete within 3 hours and only own messages
         const msgTime = new Date(msg.created_at).getTime();
         const now = Date.now();
         const threeHours = 3 * 60 * 60 * 1000;
@@ -129,10 +156,11 @@ export function useMessages(conversationId: string) {
         if (msg.sender_id !== user.uid) return;
         if (now - msgTime > threeHours) return;
 
-        // Optimistic: remove from UI instantly
-        setMessages(prev => prev.filter(m => m.id !== messageId));
+        // Optimistic UI update
+        const updated = messages.filter(m => m.id !== messageId);
+        setMessages(updated);
+        localStorage.setItem(cacheKey, JSON.stringify(updated));
 
-        // Delete media from storage if exists
         if (msg.media_url) {
             const path = msg.media_url.split('/chat-media/')[1];
             if (path) {
@@ -152,7 +180,6 @@ export function useMessages(conversationId: string) {
     };
 
     const uploadMedia = async (file: File, folder: string = 'images'): Promise<string | null> => {
-        // Better extension detection for mobile gallery images
         const mimeMap: Record<string, string> = { 'image/jpeg': 'jpg', 'image/png': 'png', 'image/gif': 'gif', 'image/webp': 'webp', 'audio/webm': 'webm', 'audio/mp4': 'm4a', 'video/mp4': 'mp4' };
         const nameExt = file.name?.includes('.') ? file.name.split('.').pop() : null;
         const ext = nameExt || mimeMap[file.type] || 'bin';

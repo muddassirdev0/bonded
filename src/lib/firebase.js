@@ -13,7 +13,15 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+
+// Initialize Auth with Persistence
+import { setPersistence, browserLocalPersistence } from 'firebase/auth';
 const auth = getAuth(app);
+if (typeof window !== 'undefined') {
+    setPersistence(auth, browserLocalPersistence).catch(err => {
+        console.error("Auth persistence error:", err);
+    });
+}
 
 // Initialize FCM (only in browser)
 let messaging = null;

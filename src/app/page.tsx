@@ -3,6 +3,9 @@
 import Link from 'next/link';
 import { Zap, Shield, MessageCircle, Users, Lock, Sparkles, Smartphone } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { useAuth } from '@/lib/hooks/useAuth';
+import { useRouter } from 'next/navigation';
+import { useEffect } from 'react';
 
 const fadeUp: any = {
   hidden: { opacity: 0, y: 30 },
@@ -28,6 +31,15 @@ const features = [
 ];
 
 export default function LandingPage() {
+  const { user, profile, loading } = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!loading && user && profile?.status === 'approved') {
+      router.push('/chats');
+    }
+  }, [user, profile, loading, router]);
+
   return (
     <div className="page-container" style={{ overflow: 'auto' }}>
       {/* Animated background */}
