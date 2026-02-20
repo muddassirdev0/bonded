@@ -203,6 +203,21 @@ export function useCall(userId: string, remoteUserId: string) {
                 .select().single()
                 .then(({ data }) => { if (data) callIdRef.current = data.id; });
 
+            // Send push notification to receiver
+            const { data: callerProfile } = await supabase
+                .from('profiles').select('display_name').eq('id', userId).single();
+
+            fetch(`${process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://cekcccwlahbqajrouwrs.supabase.co'}/functions/v1/send-call-notification`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    caller_id: userId,
+                    receiver_id: remoteUserId,
+                    caller_name: callerProfile?.display_name || 'Someone',
+                    is_video: withVideo
+                })
+            }).catch(e => console.warn('Push notification failed:', e));
+
         } catch (err: any) {
             console.error('Call error:', err);
             let errorMsg = 'Could not start call.';

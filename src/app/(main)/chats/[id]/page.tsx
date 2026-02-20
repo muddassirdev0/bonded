@@ -240,17 +240,17 @@ export default function ChatPage() {
         }
     };
 
-    // GIF SEARCH
+    // GIF SEARCH (using GIPHY API)
     const searchGifs = async (query: string) => {
         setGifLoading(true);
         try {
-            const key = 'AIzaSyBPktuJf0Y0oVIEVWohsVqZGH-GxJCwcuU';
+            const key = 'dc6zaTOxFJmzC';
             const url = query.trim()
-                ? `https://tenor.googleapis.com/v2/search?q=${encodeURIComponent(query)}&key=${key}&limit=20&media_filter=gif`
-                : `https://tenor.googleapis.com/v2/featured?key=${key}&limit=20&media_filter=gif`;
+                ? `https://api.giphy.com/v1/gifs/search?api_key=${key}&q=${encodeURIComponent(query)}&limit=20&rating=pg`
+                : `https://api.giphy.com/v1/gifs/trending?api_key=${key}&limit=20&rating=pg`;
             const res = await fetch(url);
             const data = await res.json();
-            setGifs(data.results || []);
+            setGifs(data.data || []);
         } catch (e) {
             console.error('GIF search error:', e);
         } finally {
@@ -259,7 +259,7 @@ export default function ChatPage() {
     };
 
     const sendGif = async (gifUrl: string) => {
-        await sendMessage(gifUrl, 'image', gifUrl);
+        await sendMessage('GIF', 'image', gifUrl);
         setShowGifPicker(false);
         setGifSearch('');
         setGifs([]);
@@ -484,7 +484,7 @@ export default function ChatPage() {
                                             )}
 
                                             {/* For image/voice with caption */}
-                                            {msg.type !== 'text' && msg.content && !msg.content.startsWith('📷') && !msg.content.startsWith('🎤') && (
+                                            {msg.type !== 'text' && msg.content && !msg.content.startsWith('📷') && !msg.content.startsWith('🎤') && msg.content !== 'GIF' && !msg.content.startsWith('http') && (
                                                 <div style={{
                                                     fontSize: 14, lineHeight: 1.45, color: 'white',
                                                     wordBreak: 'break-word', whiteSpace: 'pre-wrap'
@@ -611,7 +611,7 @@ export default function ChatPage() {
                     </div>
                 ) : (
                     /* Normal Input */
-                    <form onSubmit={handleSend} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <form onSubmit={handleSend} style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'nowrap' }}>
                         {/* Image picker */}
                         <input type="file" accept="image/*" id="chat-image-input" style={{ display: 'none' }}
                             onChange={handleImageSelect} />
@@ -623,26 +623,26 @@ export default function ChatPage() {
                             htmlFor="chat-camera-input"
                             whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
                             style={{
-                                width: 38, height: 38, borderRadius: '50%',
+                                width: 34, height: 34, borderRadius: '50%',
                                 background: 'rgba(139, 92, 246, 0.12)',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
                                 flexShrink: 0
                             }}
                         >
-                            <Camera size={18} style={{ color: '#A78BFA' }} />
+                            <Camera size={16} style={{ color: '#A78BFA' }} />
                         </motion.label>
 
                         <motion.label
                             htmlFor="chat-image-input"
                             whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
                             style={{
-                                width: 38, height: 38, borderRadius: '50%',
+                                width: 34, height: 34, borderRadius: '50%',
                                 background: 'rgba(59, 130, 246, 0.12)',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
                                 flexShrink: 0
                             }}
                         >
-                            <ImageIcon size={18} style={{ color: '#60A5FA' }} />
+                            <ImageIcon size={16} style={{ color: '#60A5FA' }} />
                         </motion.label>
 
                         {/* GIF button */}
@@ -651,10 +651,10 @@ export default function ChatPage() {
                             whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
                             onClick={() => { setShowGifPicker(true); searchGifs(''); }}
                             style={{
-                                width: 38, height: 38, borderRadius: '50%',
+                                width: 34, height: 34, borderRadius: '50%',
                                 background: 'rgba(251, 191, 36, 0.12)', border: 'none',
                                 display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-                                flexShrink: 0, fontSize: 13, fontWeight: 800, color: '#FBBF24'
+                                flexShrink: 0, fontSize: 11, fontWeight: 800, color: '#FBBF24'
                             }}
                         >
                             GIF
@@ -796,18 +796,18 @@ export default function ChatPage() {
                                 <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: 30, color: 'var(--text-muted)', fontSize: 13 }}>Search for GIFs</div>
                             ) : (
                                 gifs.map((gif: any) => {
-                                    const url = gif.media_formats?.gif?.url || gif.media_formats?.tinygif?.url;
+                                    const url = gif.images?.fixed_height?.url || gif.images?.original?.url;
                                     if (!url) return null;
                                     return (
                                         <motion.img key={gif.id} whileTap={{ scale: 0.95 }}
-                                            src={url} onClick={() => sendGif(url)}
+                                            src={url} onClick={() => sendGif(gif.images?.original?.url || url)}
                                             style={{ width: '100%', height: 120, objectFit: 'cover', borderRadius: 10, cursor: 'pointer', background: 'rgba(255,255,255,0.03)' }}
                                         />
                                     );
                                 })
                             )}
                         </div>
-                        <div style={{ textAlign: 'center', padding: '6px', fontSize: 10, color: 'var(--text-muted)' }}>Powered by Tenor</div>
+                        <div style={{ textAlign: 'center', padding: '6px', fontSize: 10, color: 'var(--text-muted)' }}>Powered by GIPHY</div>
                     </motion.div>
                 )}
             </AnimatePresence>

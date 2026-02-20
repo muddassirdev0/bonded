@@ -129,6 +129,9 @@ export function useMessages(conversationId: string) {
         if (msg.sender_id !== user.uid) return;
         if (now - msgTime > threeHours) return;
 
+        // Optimistic: remove from UI instantly
+        setMessages(prev => prev.filter(m => m.id !== messageId));
+
         // Delete media from storage if exists
         if (msg.media_url) {
             const path = msg.media_url.split('/chat-media/')[1];

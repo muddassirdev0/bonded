@@ -1,5 +1,6 @@
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
+import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 
 const firebaseConfig = {
     apiKey: "AIzaSyBTeOPspaQd5oocS-v00qJYZ4Tr3e9qsJE",
@@ -14,4 +15,14 @@ const firebaseConfig = {
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
 const auth = getAuth(app);
 
-export { app, auth };
+// Initialize FCM (only in browser)
+let messaging = null;
+if (typeof window !== 'undefined' && 'serviceWorker' in navigator) {
+    try {
+        messaging = getMessaging(app);
+    } catch (e) {
+        console.warn('FCM not supported:', e);
+    }
+}
+
+export { app, auth, messaging, getToken, onMessage };
