@@ -151,7 +151,7 @@ export default function LandingPage() {
           variants={fadeUp} initial="hidden" animate="visible" custom={7}
           style={{ width: '100%', maxWidth: 340, marginBottom: 24 }}
         >
-          <a href="https://github.com/muddassirdev0/bonded/releases/latest/download/bonded.apk" download
+          <a href="/bonded.apk" download="Bonded.apk"
             style={{ textDecoration: 'none' }}>
             <motion.div
               whileHover={{ scale: 1.02, boxShadow: '0 8px 30px rgba(34, 197, 94, 0.3)' }}
