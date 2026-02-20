@@ -15,7 +15,7 @@ interface UserProfile {
 }
 
 // VAPID key for FCM (Firebase Console -> Project Settings -> Cloud Messaging -> Web Push certificates)
-const VAPID_KEY = 'BLEq3YBrJOMKsRD-9Bxv5FACq8vFNOGHgkRQxe0Fl4ULuxD8H4_pqOGJFPDMYEH3eOo-tJdKV9q_0X6Gt1XKiE8';
+const VAPID_KEY = 'BK-PuEPRPkcPvlt50D3NHGQp8mJhp3XIvCZSEtqeDJcYnSzXE-CYL3b1YavkmoKzjl50yn4WaChmzKzZuHli0LA';
 
 export function useAuth() {
     const [user, setUser] = useState<User | null>(null);
