@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Bonded</string>
+    <string name="title_activity_main">Bonded</string>
+    <string name="package_name">com.bonded.app</string>
+    <string name="custom_url_scheme">com.bonded.app</string>
+</resources>
