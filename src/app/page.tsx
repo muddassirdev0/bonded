@@ -1,7 +1,7 @@
 "use client";
 
 import Link from 'next/link';
-import { Zap, Shield, MessageCircle, Users, Lock, Sparkles } from 'lucide-react';
+import { Zap, Shield, MessageCircle, Users, Lock, Sparkles, Smartphone, Download } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const fadeUp: any = {
@@ -114,7 +114,7 @@ export default function LandingPage() {
         </motion.p>
 
         {/* Feature grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, width: '100%', maxWidth: 340, marginBottom: 48 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, width: '100%', maxWidth: 340, marginBottom: 32 }}>
           {features.map((f, i) => (
             <motion.div
               key={f.label}
@@ -146,9 +146,44 @@ export default function LandingPage() {
           ))}
         </div>
 
-        {/* CTA Buttons */}
+        {/* Android Download */}
         <motion.div
           variants={fadeUp} initial="hidden" animate="visible" custom={7}
+          style={{ width: '100%', maxWidth: 340, marginBottom: 24 }}
+        >
+          <a href="https://github.com/muddassirdev0/bonded/releases/latest/download/bonded.apk" download
+            style={{ textDecoration: 'none' }}>
+            <motion.div
+              whileHover={{ scale: 1.02, boxShadow: '0 8px 30px rgba(34, 197, 94, 0.3)' }}
+              whileTap={{ scale: 0.98 }}
+              className="glass-card"
+              style={{
+                padding: '16px 20px', display: 'flex', alignItems: 'center', gap: 14,
+                border: '1px solid rgba(34, 197, 94, 0.2)', cursor: 'pointer',
+                background: 'rgba(34, 197, 94, 0.06)'
+              }}
+            >
+              <div style={{
+                width: 46, height: 46, borderRadius: 14,
+                background: 'linear-gradient(135deg, #22C55E, #16A34A)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                boxShadow: '0 4px 15px rgba(34, 197, 94, 0.3)', flexShrink: 0
+              }}>
+                <Smartphone size={22} color="white" />
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 600, marginBottom: 2 }}>DOWNLOAD FOR</div>
+                <div style={{ fontSize: 16, fontWeight: 800, color: 'white' }}>Android</div>
+                <div style={{ fontSize: 10, color: 'var(--accent-green)', fontWeight: 600 }}>v1.0.0 • Free</div>
+              </div>
+              <Download size={20} style={{ color: 'var(--accent-green)', flexShrink: 0 }} />
+            </motion.div>
+          </a>
+        </motion.div>
+
+        {/* CTA Buttons */}
+        <motion.div
+          variants={fadeUp} initial="hidden" animate="visible" custom={8}
           style={{ display: 'flex', flexDirection: 'column', gap: 12, width: '100%', maxWidth: 340 }}
         >
           <Link href="/signup">
@@ -175,7 +210,7 @@ export default function LandingPage() {
 
         {/* Footer */}
         <motion.p
-          variants={fadeUp} initial="hidden" animate="visible" custom={8}
+          variants={fadeUp} initial="hidden" animate="visible" custom={9}
           style={{ marginTop: 40, fontSize: 11, color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: 4 }}
         >
           <Zap size={10} /> Decentralized & Private
@@ -184,3 +219,4 @@ export default function LandingPage() {
     </div>
   );
 }
+
