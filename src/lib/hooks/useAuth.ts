@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth, messaging, getToken } from '@/lib/firebase';
 import { supabase } from '@/lib/supabase';
@@ -14,20 +14,46 @@ interface UserProfile {
     accent_color: string;
 }
 
-// VAPID key for FCM (Firebase Console -> Project Settings -> Cloud Messaging -> Web Push certificates)
+// VAPID key for FCM
 const VAPID_KEY = 'BK-PuEPRPkcPvlt50D3NHGQp8mJhp3XIvCZSEtqeDJcYnSzXE-CYL3b1YavkmoKzjl50yn4WaChmzKzZuHli0LA';
+
+// Update last_seen_at
+async function updateLastSeen(userId: string) {
+    await supabase.from('profiles').update({ last_seen_at: new Date().toISOString() }).eq('id', userId);
+}
+
+// Register FCM push token
+async function registerFCMToken(userId: string) {
+    try {
+        if (!messaging) return;
+        if (typeof window === 'undefined') return;
+
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') return;
+
+        const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+        const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: registration });
+
+        if (token) {
+            await supabase.from('profiles').update({ fcm_token: token }).eq('id', userId);
+            console.log('FCM token registered');
+        }
+    } catch (err) {
+        console.warn('FCM registration failed:', err);
+    }
+}
 
 export function useAuth() {
     const [user, setUser] = useState<User | null>(null);
     const [profile, setProfile] = useState<UserProfile | null>(null);
     const [loading, setLoading] = useState(true);
+    const heartbeatRef = useRef<NodeJS.Timeout | null>(null);
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
             setUser(firebaseUser);
 
             if (firebaseUser) {
-                // Fetch profile from Supabase
                 const { data, error } = await supabase
                     .from('profiles')
                     .select('*')
@@ -42,49 +68,24 @@ export function useAuth() {
 
                 // Register FCM token
                 registerFCMToken(firebaseUser.uid);
+
+                // Update last_seen_at now and every 60s heartbeat
+                updateLastSeen(firebaseUser.uid);
+                if (heartbeatRef.current) clearInterval(heartbeatRef.current);
+                heartbeatRef.current = setInterval(() => updateLastSeen(firebaseUser.uid), 60000);
             } else {
                 setProfile(null);
+                if (heartbeatRef.current) clearInterval(heartbeatRef.current);
             }
 
             setLoading(false);
         });
 
-        return () => unsubscribe();
+        return () => {
+            unsubscribe();
+            if (heartbeatRef.current) clearInterval(heartbeatRef.current);
+        };
     }, []);
 
     return { user, profile, loading };
-}
-
-async function registerFCMToken(userId: string) {
-    try {
-        if (!messaging) return;
-        if (typeof window === 'undefined') return;
-
-        // Request notification permission
-        const permission = await Notification.requestPermission();
-        if (permission !== 'granted') {
-            console.log('Notification permission denied');
-            return;
-        }
-
-        // Register service worker
-        const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
-
-        // Get FCM token
-        const token = await getToken(messaging, {
-            vapidKey: VAPID_KEY,
-            serviceWorkerRegistration: registration
-        });
-
-        if (token) {
-            // Save to Supabase
-            await supabase
-                .from('profiles')
-                .update({ fcm_token: token })
-                .eq('id', userId);
-            console.log('FCM token registered');
-        }
-    } catch (err) {
-        console.warn('FCM registration failed:', err);
-    }
 }

@@ -12,6 +12,19 @@ import { motion, AnimatePresence } from 'framer-motion';
 // Link detection regex
 const URL_REGEX = /(https?:\/\/[^\s]+)/g;
 
+// Helper to format last seen
+function formatLastSeen(lastSeenAt: string | null): { text: string; isOnline: boolean } {
+    if (!lastSeenAt) return { text: 'Offline', isOnline: false };
+    const diff = Date.now() - new Date(lastSeenAt).getTime();
+    const minutes = Math.floor(diff / 60000);
+    if (minutes < 2) return { text: 'Online', isOnline: true };
+    if (minutes < 60) return { text: `${minutes}m ago`, isOnline: false };
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return { text: `${hours}h ago`, isOnline: false };
+    const days = Math.floor(hours / 24);
+    return { text: `${days}d ago`, isOnline: false };
+}
+
 function renderMessageContent(content: string) {
     if (!content) return null;
     const parts = content.split(URL_REGEX);
@@ -240,17 +253,17 @@ export default function ChatPage() {
         }
     };
 
-    // GIF SEARCH (using GIPHY API)
+    // GIF SEARCH (using Tenor API v2 with Firebase API key)
     const searchGifs = async (query: string) => {
         setGifLoading(true);
         try {
-            const key = 'dc6zaTOxFJmzC';
+            const key = 'AIzaSyBTeOPspaQd5oocS-v00qJYZ4Tr3e9qsJE';
             const url = query.trim()
-                ? `https://api.giphy.com/v1/gifs/search?api_key=${key}&q=${encodeURIComponent(query)}&limit=20&rating=pg`
-                : `https://api.giphy.com/v1/gifs/trending?api_key=${key}&limit=20&rating=pg`;
+                ? `https://tenor.googleapis.com/v2/search?q=${encodeURIComponent(query)}&key=${key}&limit=20&media_filter=tinygif,gif&client_key=bonded-app`
+                : `https://tenor.googleapis.com/v2/featured?key=${key}&limit=20&media_filter=tinygif,gif&client_key=bonded-app`;
             const res = await fetch(url);
             const data = await res.json();
-            setGifs(data.data || []);
+            setGifs(data.results || []);
         } catch (e) {
             console.error('GIF search error:', e);
         } finally {
@@ -327,7 +340,8 @@ export default function ChatPage() {
                     />
                     <div style={{
                         position: 'absolute', bottom: 0, right: 0,
-                        width: 10, height: 10, borderRadius: '50%', background: '#22C55E',
+                        width: 10, height: 10, borderRadius: '50%',
+                        background: formatLastSeen(otherUser.last_seen_at).isOnline ? '#22C55E' : '#6B7280',
                         border: '2px solid var(--bg-primary)'
                     }} />
                 </div>
@@ -336,8 +350,8 @@ export default function ChatPage() {
                     <div style={{ fontWeight: 700, fontSize: 15, lineHeight: 1.2 }}>
                         {otherUser.display_name || otherUser.username}
                     </div>
-                    <div style={{ fontSize: 11, color: '#22C55E', fontWeight: 600 }}>
-                        Active now
+                    <div style={{ fontSize: 11, color: formatLastSeen(otherUser.last_seen_at).isOnline ? '#22C55E' : 'var(--text-muted)', fontWeight: 600 }}>
+                        {formatLastSeen(otherUser.last_seen_at).text}
                     </div>
                 </div>
 
@@ -796,18 +810,19 @@ export default function ChatPage() {
                                 <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: 30, color: 'var(--text-muted)', fontSize: 13 }}>Search for GIFs</div>
                             ) : (
                                 gifs.map((gif: any) => {
-                                    const url = gif.images?.fixed_height?.url || gif.images?.original?.url;
+                                    const url = gif.media_formats?.tinygif?.url || gif.media_formats?.gif?.url;
+                                    const fullUrl = gif.media_formats?.gif?.url || url;
                                     if (!url) return null;
                                     return (
                                         <motion.img key={gif.id} whileTap={{ scale: 0.95 }}
-                                            src={url} onClick={() => sendGif(gif.images?.original?.url || url)}
+                                            src={url} onClick={() => sendGif(fullUrl)}
                                             style={{ width: '100%', height: 120, objectFit: 'cover', borderRadius: 10, cursor: 'pointer', background: 'rgba(255,255,255,0.03)' }}
                                         />
                                     );
                                 })
                             )}
                         </div>
-                        <div style={{ textAlign: 'center', padding: '6px', fontSize: 10, color: 'var(--text-muted)' }}>Powered by GIPHY</div>
+                        <div style={{ textAlign: 'center', padding: '6px', fontSize: 10, color: 'var(--text-muted)' }}>Powered by Tenor</div>
                     </motion.div>
                 )}
             </AnimatePresence>
